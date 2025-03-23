@@ -1,4 +1,5 @@
 import { createInterface } from "readline";
+import prompts from "prompts";
 
 /**
  * Generates a progress bar string.
@@ -66,3 +67,17 @@ export const selectOption = async (options: string[]): Promise<string> => {
 
   return options[choiceIndex];
 };
+
+/**
+ * Demander à l'utilisateur où il veut enregistrer la vidéo.
+ */
+export async function promptUserForFilePath() {
+  const { filePath } = await prompts({
+    type: "text",
+    name: "filePath",
+    message: "🖥️ Où voulez-vous enregistrer la vidéo ?",
+    initial: "./", // Dossier par défaut
+  });
+
+  return filePath;
+}

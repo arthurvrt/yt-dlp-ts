@@ -1,5 +1,7 @@
-import { execa } from "execa";
+import { runYtDlp } from "./basic";
+import { promptUserForFilePath } from "./cli-utils";
 import prompts from "prompts";
+import { downloadVideoFromPlaylist } from "./downloadVideo";
 
 const playlistUrl = process.argv[2];
 
@@ -14,34 +16,6 @@ interface FormatInfo {
   height: number | null;
   vcodec: string;
   acodec: string;
-}
-
-/**
- * Demander à l'utilisateur où il veut enregistrer la vidéo.
- */
-async function promptUserForFilePath() {
-  const { filePath } = await prompts({
-    type: "text",
-    name: "filePath",
-    message: "🖥️ Où voulez-vous enregistrer la vidéo ?",
-    initial: "./", // Dossier par défaut
-  });
-
-  return filePath;
-}
-
-/**
- * Exécute yt-dlp et retourne le JSON parsé.
- */
-async function runYtDlp(args: string[]) {
-  try {
-    const { stdout } = await execa("yt-dlp", [...args, "--dump-single-json"]);
-    return JSON.parse(stdout);
-  } catch (error) {
-    // console.error("❌ Erreur lors de l'exécution de yt-dlp :", error);
-    console.error("❌ Erreur lors de l'exécution de yt-dlp :");
-    return null;
-  }
 }
 
 /**
@@ -161,49 +135,6 @@ async function promptUserForFormat(availableFormats: AvailableFormats) {
 }
 
 /**
- * Génère la commande yt-dlp avec fallback logique.
- */
-function getYtDlpFormatString(resolution: number, format: string): string {
-  return `((bv*[height<=${resolution}][ext=${format}]+ba/b[height<=${resolution}][ext=${format}]) 
-          / (bv*[height<${resolution}]+ba/b[height<${resolution}]) 
-          / (b[height<=${resolution}] / w[height<=${resolution}]))
-          / (b/w))`;
-}
-
-/**
- * Télécharge une vidéo avec yt-dlp.
- */
-async function downloadVideo(
-  videoUrl: string,
-  resolution: number,
-  format: string,
-  filePath: string
-) {
-  const ytDlpFormat = getYtDlpFormatString(resolution, format);
-  console.log(`🚀 Téléchargement de la vidéo : ${videoUrl}`);
-  try {
-    await execa(
-      "yt-dlp",
-      [
-        "--ignore-errors", // Ignore les erreurs de téléchargement
-        "--quite", // Mode silencieux
-        "-f",
-        ytDlpFormat,
-        "-o",
-        `${filePath}/%(title)s.%(ext)s`,
-        videoUrl,
-        "--progress",
-      ],
-      { stdio: "inherit" }
-    );
-
-    console.log(`\n✅ Vidéo téléchargée : ${videoUrl}`);
-  } catch (error) {
-    console.error(`❌ Erreur lors du téléchargement de ${videoUrl}:`, error);
-  }
-}
-
-/**
  * Télécharge toutes les vidéos d'une playlist en parallèle.
  */
 async function downloadPlaylist(
@@ -216,7 +147,7 @@ async function downloadPlaylist(
 
   // Lancer les téléchargements en parallèle
   const downloadPromises = videoUrls.map((videoUrl) =>
-    downloadVideo(videoUrl, resolution, format, filePath)
+    downloadVideoFromPlaylist(videoUrl, resolution, format, filePath)
   );
 
   // Attendre que tous les téléchargements soient terminés

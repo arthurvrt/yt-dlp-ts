@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["ES6"],
-    "types": ["node"]
+    // "lib": ["ES6"],
+    "lib": ["ESNext", "DOM"],
+    "types": ["node"],
+    "esModuleInterop": true,
+    "moduleResolution": "node"
+    // "strict": true
   }
 }

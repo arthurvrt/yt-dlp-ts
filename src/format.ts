@@ -1,24 +1,5 @@
 import { formatDuration, intervalToDuration } from "date-fns";
-
-export type Format = {
-  format_id: string;
-  vcodec: string;
-  acodec: string;
-  ext: string;
-  video_ext: string;
-  protocol: string;
-  filesize?: number;
-  filesize_approx?: number;
-  resolution: string;
-  tbr: number | null;
-};
-
-export type Video = {
-  title: string;
-  duration: number;
-  live_status: string;
-  formats: Format[];
-};
+import { Format, Video } from "./types";
 
 export function formatHHMM(seconds: number) {
   const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
@@ -34,41 +15,6 @@ export function formatHHMM(seconds: number) {
       formatDistance: (_token, count) => String(count).padStart(2, "0"),
     },
   });
-}
-
-export function parseHHMM(input: string) {
-  const parts = input.split(":");
-  if (parts.length === 2) {
-    const [minutes, seconds] = parts;
-    return parseInt(minutes) * 60 + parseInt(seconds);
-  } else if (parts.length === 3) {
-    const [hours, minutes, seconds] = parts;
-    return (
-      parseInt(hours) * 60 * 60 + parseInt(minutes) * 60 + parseInt(seconds)
-    );
-  }
-  throw new Error("Invalid input");
-}
-
-export function isValidHHMM(input: string) {
-  try {
-    if (input) {
-      parseHHMM(input);
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function isValidUrl(url: unknown): boolean {
-  if (typeof url !== "string") return false;
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export function formatTbr(tbr: number | null) {
@@ -133,3 +79,16 @@ export const getFormatTitle = (format: Format) =>
   ]
     .filter((x) => Boolean(x))
     .join(" | ");
+
+/**
+ * Génère la commande yt-dlp avec fallback logique.
+ */
+export function getYtDlpFormatString(
+  resolution: number,
+  format: string
+): string {
+  return `((bv*[height<=${resolution}][ext=${format}]+ba/b[height<=${resolution}][ext=${format}]) 
+          / (bv*[height<${resolution}]+ba/b[height<${resolution}]) 
+          / (b[height<=${resolution}] / w[height<=${resolution}]))
+          / (b/w))`;
+}

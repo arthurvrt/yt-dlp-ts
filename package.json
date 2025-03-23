@@ -3,12 +3,13 @@
   "dependencies": {
     "clipboardy": "4.0.0",
     "date-fns": "^4.1.0",
-    "execa": "^9.5.2",
+    "execa": "^6.1.0",
     "path": "^0.12.7",
     "prompts": "^2.4.2"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
+    "@types/prompts": "^2.4.9",
     "typescript": "^5.7.3"
   }
 }
