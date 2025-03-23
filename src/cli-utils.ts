@@ -71,7 +71,7 @@ export const selectOption = async (options: string[]): Promise<string> => {
 /**
  * Demander à l'utilisateur où il veut enregistrer la vidéo.
  */
-export async function promptUserForFilePath() {
+export const promptUserForFilePath = async (): Promise<string> => {
   const { filePath } = await prompts({
     type: "text",
     name: "filePath",
@@ -80,4 +80,4 @@ export async function promptUserForFilePath() {
   });
 
   return filePath;
-}
+};

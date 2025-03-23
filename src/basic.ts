@@ -7,9 +7,11 @@ export async function runYtDlp(args: string[]) {
   try {
     const { stdout } = await execa("yt-dlp", [...args, "--dump-single-json"]);
     return JSON.parse(stdout);
-  } catch (error) {
-    // console.error("❌ Erreur lors de l'exécution de yt-dlp :", error);
-    console.error("❌ Erreur lors de l'exécution de yt-dlp :");
+  } catch (error: any) {
+    console.error(
+      "❌ Erreur lors de l'exécution de yt-dlp :",
+      error.stderr || error.message
+    );
     return null;
   }
 }

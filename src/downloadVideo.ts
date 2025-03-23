@@ -1,5 +1,4 @@
 import prompts from "prompts";
-import { runYtDlp } from "./basic";
 import { promptUserForFilePath } from "./cli-utils";
 import {
   getFormats,
@@ -11,11 +10,19 @@ import { Format, Video } from "./types";
 import { execa } from "execa";
 
 export const getVideoInfo = async (videoUrl: string): Promise<Video> => {
-  const result = await runYtDlp(
-    ["--format-sort=resolution,ext,tbr", videoUrl].filter((x) => Boolean(x))
-  );
+  try {
+    const result = await execa(
+      "yt-dlp",
+      ["--dump-json", "--format-sort=resolution,ext,tbr", videoUrl].filter(
+        (x) => Boolean(x)
+      )
+    );
 
-  return JSON.parse(result.stdout) as Video;
+    return JSON.parse(result.stdout) as Video;
+  } catch (error) {
+    console.error(`Failed to get video info for URL ${videoUrl}:`, error);
+    throw error;
+  }
 };
 
 export const getVideoFromId = async (videoId: string): Promise<Video> => {
@@ -43,23 +50,17 @@ export const getVideosFromIds = async (
 const promptUserToChooseFormat = async (formats: {
   Video: Format[];
   "Audio Only": Format[];
-}): Promise<Format> => {
-  const videoFormats = formats.Video.map((format) => ({
-    title: getFormatTitle(format),
-    value: getFormatValue(format),
-  }));
-  const audioFormats = formats["Audio Only"].map((format) => ({
-    title: getFormatTitle(format),
-    value: getFormatValue(format),
-  }));
+}): Promise<string> => {
+  const videoFormats = formats.Video;
+  const audioFormats = formats["Audio Only"];
 
   const { format: formatChoice } = await prompts({
     type: "select",
     name: "format",
     message: "🎞️ Choisissez le format vidéo :",
-    choices: [...audioFormats, ...videoFormats].map(({ title, value }) => ({
-      title: title.toUpperCase(),
-      value: value,
+    choices: [...audioFormats, ...videoFormats].map((format) => ({
+      title: getFormatTitle(format),
+      value: getFormatValue(format),
     })),
   });
 
@@ -104,26 +105,25 @@ export async function downloadVideo(
   filePath: string,
   format: string
 ) {
-  const [downloadFormat, recodeFormat] = format.split("#");
+  const [downloadFormat, recodeFormat] = format.includes("#")
+    ? format.split("#")
+    : [format, null];
 
-  const options = [];
-  options.push("--format", downloadFormat);
-  options.push("--recode-video", recodeFormat);
-  options.push("--print", "after_move:filepath");
+  const options = [
+    "-P",
+    filePath,
+    "-f",
+    downloadFormat,
+    "--print",
+    "after_move:filepath",
+  ];
+  options.push("--ignore-errors", "--progress");
 
-  const process = await execa(
-    "yt-dlp",
-    [
-      ...options,
-      "--ignore-errors", // Ignore download errors
-      "-f",
-      "-o",
-      `${filePath}/%(title)s.%(ext)s`,
-      videoUrl,
-      "--progress",
-    ],
-    { stdio: "inherit" }
-  );
+  if (recodeFormat) {
+    options.push("--recode-video", recodeFormat);
+  }
+
+  await execa("yt-dlp", [...options, videoUrl], { stdio: "inherit" });
 }
 
 export const downloadVideoProcess = async (videoUrl: string) => {
@@ -131,8 +131,7 @@ export const downloadVideoProcess = async (videoUrl: string) => {
 
   const videoInfos = await getVideoInfo(videoUrl);
   const formats = getFormats(videoInfos);
-  const format = await promptUserToChooseFormat(formats);
-  const formatValue = getFormatValue(format);
+  const formatValue = await promptUserToChooseFormat(formats);
 
   await downloadVideo(videoUrl, filePath, formatValue);
 };
