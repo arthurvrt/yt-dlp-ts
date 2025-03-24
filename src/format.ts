@@ -1,5 +1,6 @@
 import {formatDuration, intervalToDuration} from "date-fns";
-import {Format, Video} from "./types";
+import {runYtDlp} from "./basic";
+import {Format, FormatInfo, Video} from "./types";
 
 export function formatHHMM(seconds: number) {
   const duration = intervalToDuration({start: 0, end: seconds * 1000});
@@ -45,9 +46,10 @@ const hasCodec = ({vcodec, acodec}: Format) => {
   };
 };
 
+export const videoKey = "Video";
+export const audioOnlyKey = "Audio Only";
+
 export const getFormats = (video?: Video) => {
-  const videoKey = "Video";
-  const audioOnlyKey = "Audio Only";
   const videoWithAudio: Format[] = [];
   const audioOnly: Format[] = [];
 
@@ -56,7 +58,8 @@ export const getFormats = (video?: Video) => {
   for (const format of video.formats.slice().reverse()) {
     const {hasAcodec, hasVcodec} = hasCodec(format);
     if (hasVcodec) videoWithAudio.push(format);
-    else if (hasAcodec && !hasVcodec) audioOnly.push(format);
+    else if (hasAcodec || format.resolution === "audio only")
+      audioOnly.push(format);
     else continue;
   }
 
@@ -97,4 +100,82 @@ export const getYtDlpFormatString = ({
     ` / (w[height<=${resolution}])` +
     ` / (b/w))`
   );
+};
+
+/**
+ * Récupère les formats disponibles pour une vidéo.
+ */
+export const getVideoFormats = async (
+  videoUrl: string
+): Promise<FormatInfo[]> => {
+  try {
+    const videoInfo = await runYtDlp([videoUrl]);
+    if (!videoInfo || !videoInfo.formats) return null;
+
+    return videoInfo.formats
+      .filter((f: any) => f.vcodec !== "none")
+      .map((f: any) => ({
+        format_id: f.format_id,
+        ext: f.ext,
+        height: f.height || null,
+        vcodec: f.vcodec,
+        acodec: f.acodec,
+      }));
+  } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * Trouve les formats communs à toutes les vidéos d'une playlist.
+ */
+type Resolution = number;
+type Extension = string;
+export type AvailableFormats = Record<Resolution, Set<Extension>>;
+
+export const getCommonFormats = async (videoUrls: string[]) => {
+  console.log("📂 Analyse des formats disponibles...");
+  console.log(`🔍 Analyse de ${videoUrls.length} vidéos...`);
+
+  let videoCount = 0; // Compteur pour les vidéos
+  let errorCount = 0; // Compteur pour les erreurs
+  const allFormats = await Promise.all(
+    videoUrls.map(async (url) => {
+      try {
+        const formats = await getVideoFormats(url);
+        videoCount++;
+        console.log(`🔍 Analyse de la vidéo ${videoCount}...`);
+        if (!formats) {
+          errorCount++;
+        }
+        return formats;
+      } catch (error) {
+        errorCount++;
+        return null;
+      }
+    })
+  );
+
+  // Afficher le nombre d'erreurs
+  console.log(
+    `\n❌ ${errorCount} non trouvé(s) ou erreur(s) lors de l'analyse.`
+  );
+
+  // Filtrer les résultats nuls (erreurs)
+  const validFormats = allFormats.filter((format) => format !== null);
+  console.log(`🔍 Analyse de ${validFormats.length} vidéos réussie.`);
+
+  // Récupérer les résolutions et formats communs
+  const resolutionOptions = [1080, 720, 480, 360];
+  const availableFormats: AvailableFormats = {};
+
+  resolutionOptions.forEach((res) => (availableFormats[res] = new Set()));
+
+  validFormats.flat().forEach((format) => {
+    if (format.height && resolutionOptions.includes(format.height)) {
+      availableFormats[format.height].add(format.ext);
+    }
+  });
+
+  return availableFormats;
 };

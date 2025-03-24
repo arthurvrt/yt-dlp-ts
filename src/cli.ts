@@ -1,7 +1,6 @@
-import { isYoutubePlaylist } from "./basic";
-import { downloadYouTubePlaylistInParalelle } from "./downloadPlaylist";
-import { downloadVideoProcess } from "./downloadVideo";
-import { validateUrl } from "./validation";
+import {isYoutubePlaylist, processUrl} from "./basic";
+import {downloadYouTubePlaylistInParalelle} from "./downloadPlaylist";
+import {downloadVideoProcess} from "./downloadVideo";
 
 const [, , url] = process.argv; // Get the third CLI argument
 
@@ -12,22 +11,30 @@ if (!url) {
 
 const startTime = Date.now();
 
-validateUrl(url);
+// Function to calculate and print the duration
+const logDuration = (startTime) => {
+  const endTime = Date.now();
+  const duration = (endTime - startTime) / 1000; // Convert to seconds
+  console.log(`Time taken: ${duration.toFixed(2)} seconds`);
+};
 
-const isPlaylist = isYoutubePlaylist(url);
+const processedUrl = processUrl(url);
 
-if (isPlaylist) {
-  downloadYouTubePlaylistInParalelle(url).then((result) => {
-    const endTime = Date.now();
-    const duration = (endTime - startTime) / 1000; // Convert to seconds
+const isPlaylist = isYoutubePlaylist(processedUrl);
 
-    console.log(`Time taken: ${duration.toFixed(2)} seconds`);
-  });
-} else {
-  downloadVideoProcess(url).then(() => {
-    const endTime = Date.now();
-    const duration = (endTime - startTime) / 1000; // Convert to seconds
+async function downloadContent() {
+  try {
+    if (isPlaylist) {
+      await downloadYouTubePlaylistInParalelle(processedUrl);
+    } else {
+      await downloadVideoProcess(processedUrl);
+    }
 
-    console.log(`Time taken: ${duration.toFixed(2)} seconds`);
-  });
+    logDuration(startTime);
+  } catch (error) {
+    console.error("Error downloading content:", error.message);
+    process.exit(1);
+  }
 }
+
+downloadContent();

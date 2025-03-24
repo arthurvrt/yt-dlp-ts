@@ -17,3 +17,11 @@ export type Video = {
   live_status: string;
   formats: Format[];
 };
+
+export interface FormatInfo {
+  format_id: string;
+  ext: string;
+  height: number | null;
+  vcodec: string;
+  acodec: string;
+}

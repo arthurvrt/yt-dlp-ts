@@ -1,4 +1,5 @@
 import {execa} from "execa";
+import {validateUrl} from "./validation";
 
 /**
  * Exécute yt-dlp et retourne le JSON parsé.
@@ -20,12 +21,34 @@ export const runYtDlp = async (args: string[]) => {
  * Vérifie si le lien est une playlist YouTube ou une vidéo YouTube.
  */
 export const isYoutubePlaylist = (link: string): boolean => {
-  const playlistRegex = /[?&]list=([^#&?]+)/;
+  const playlistRegex = /playlist\?list=([^#&?]+)/;
   return playlistRegex.test(link);
 };
 
-export function isYoutubeVideo(link: string): boolean {
-  const videoRegex =
-    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-  return videoRegex.test(link);
+export const processUrl = (url: string): string => {
+  const cleanUrl = url.trim();
+  validateUrl(cleanUrl);
+  console.log(`🔗 Lien YouTube valide : ${cleanUrl}`);
+
+  return toClassicYoutubeUrl(cleanUrl);
+};
+
+/**
+ * Transforme une URL YouTube en une URL classique de vidéo YouTube.
+ */
+export function toClassicYoutubeUrl(link: string): string | null {
+  try {
+    const url = new URL(link);
+    const videoId = url.searchParams.get("v");
+
+    if (!videoId) {
+      throw new Error("Invalid URL");
+    }
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    console.log(`🔗 Lien transformé : ${videoUrl}`);
+    return videoUrl;
+  } catch (error) {
+    console.error("❌ Erreur lors de la transformation de l'URL :", error);
+    throw new Error("Invalid URL");
+  }
 }

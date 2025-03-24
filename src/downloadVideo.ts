@@ -1,5 +1,6 @@
+import {execa} from "execa";
 import prompts from "prompts";
-import {promptUserForFilePath} from "./cli-utils";
+import {promptUserForFilePath, promptUserForMediaType} from "./cli-utils";
 import {
   getFormats,
   getFormatTitle,
@@ -7,7 +8,6 @@ import {
   getYtDlpFormatString,
 } from "./format";
 import {Format, Video} from "./types";
-import {execa} from "execa";
 
 export const getVideoInfo = async (videoUrl: string): Promise<Video> => {
   try {
@@ -18,7 +18,8 @@ export const getVideoInfo = async (videoUrl: string): Promise<Video> => {
       )
     );
 
-    return JSON.parse(result.stdout) as Video;
+    const parsedResult = JSON.parse(result.stdout);
+    return parsedResult as Video;
   } catch (error) {
     console.error(`Failed to get video info for URL ${videoUrl}:`, error);
     throw error;
@@ -47,18 +48,12 @@ export const getVideosFromIds = async (
   return videos;
 };
 
-const promptUserToChooseFormat = async (formats: {
-  Video: Format[];
-  "Audio Only": Format[];
-}): Promise<string> => {
-  const videoFormats = formats.Video;
-  const audioFormats = formats["Audio Only"];
-
+const promptUserToChooseFormat = async (formats: Format[]): Promise<string> => {
   const {format: formatChoice} = await prompts({
     type: "select",
     name: "format",
     message: "🎞️ Choisissez le format vidéo :",
-    choices: [...audioFormats, ...videoFormats].map((format) => ({
+    choices: formats.map((format) => ({
       title: getFormatTitle(format),
       value: getFormatValue(format),
     })),
@@ -132,7 +127,15 @@ export const downloadVideoProcess = async (videoUrl: string) => {
   const filePath = await promptUserForFilePath();
 
   const videoInfos = await getVideoInfo(videoUrl);
-  const formats = getFormats(videoInfos);
+  const allFormats = getFormats(videoInfos);
+  const mediaType = await promptUserForMediaType();
+
+  const formats = allFormats[mediaType];
+  if (!formats || formats.length === 0) {
+    console.error(`❌ Aucun format disponible pour le type ${mediaType}`);
+    return;
+  }
+
   const formatValue = await promptUserToChooseFormat(formats);
 
   await downloadVideo({videoUrl, filePath, format: formatValue});
