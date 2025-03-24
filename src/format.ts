@@ -1,8 +1,8 @@
-import { formatDuration, intervalToDuration } from "date-fns";
-import { Format, Video } from "./types";
+import {formatDuration, intervalToDuration} from "date-fns";
+import {Format, Video} from "./types";
 
 export function formatHHMM(seconds: number) {
-  const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
+  const duration = intervalToDuration({start: 0, end: seconds * 1000});
 
   return formatDuration(duration, {
     format:
@@ -38,7 +38,7 @@ export function formatFilesize(filesize?: number, filesizeApprox?: number) {
   return `${(size / 1024 ** 3).toFixed(2)} GiB`;
 }
 
-const hasCodec = ({ vcodec, acodec }: Format) => {
+const hasCodec = ({vcodec, acodec}: Format) => {
   return {
     hasVcodec: Boolean(vcodec) && vcodec !== "none",
     hasAcodec: Boolean(acodec) && acodec !== "none",
@@ -51,20 +51,20 @@ export const getFormats = (video?: Video) => {
   const videoWithAudio: Format[] = [];
   const audioOnly: Format[] = [];
 
-  if (!video) return { [videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly };
+  if (!video) return {[videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly};
 
   for (const format of video.formats.slice().reverse()) {
-    const { hasAcodec, hasVcodec } = hasCodec(format);
+    const {hasAcodec, hasVcodec} = hasCodec(format);
     if (hasVcodec) videoWithAudio.push(format);
     else if (hasAcodec && !hasVcodec) audioOnly.push(format);
     else continue;
   }
 
-  return { [videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly };
+  return {[videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly};
 };
 
 export const getFormatValue = (format: Format) => {
-  const { hasAcodec } = hasCodec(format);
+  const {hasAcodec} = hasCodec(format);
   const audio = hasAcodec ? "" : "+bestaudio";
   const targetExt = `#${format.ext}`;
   return format.format_id + audio + targetExt;
@@ -83,12 +83,18 @@ export const getFormatTitle = (format: Format) =>
 /**
  * Génère la commande yt-dlp avec fallback logique.
  */
-export function getYtDlpFormatString(
-  resolution: number,
-  format: string
-): string {
-  return `((bv*[height<=${resolution}][ext=${format}]+ba/b[height<=${resolution}][ext=${format}]) 
-          / (bv*[height<${resolution}]+ba/b[height<${resolution}]) 
-          / (b[height<=${resolution}] / w[height<=${resolution}]))
-          / (b/w))`;
-}
+export const getYtDlpFormatString = ({
+  resolution,
+  format,
+}: {
+  resolution: number;
+  format: string;
+}): string => {
+  return (
+    `((bv*[height<=${resolution}][ext=${format}]+ba/b[height<=${resolution}][ext=${format}])` +
+    ` / (bv*[height<=${resolution}]+ba/b[height<=${resolution}])` +
+    ` / (b[height<=${resolution}])` +
+    ` / (w[height<=${resolution}])` +
+    ` / (b/w))`
+  );
+};

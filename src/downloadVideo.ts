@@ -1,13 +1,13 @@
 import prompts from "prompts";
-import { promptUserForFilePath } from "./cli-utils";
+import {promptUserForFilePath} from "./cli-utils";
 import {
   getFormats,
   getFormatTitle,
   getFormatValue,
   getYtDlpFormatString,
 } from "./format";
-import { Format, Video } from "./types";
-import { execa } from "execa";
+import {Format, Video} from "./types";
+import {execa} from "execa";
 
 export const getVideoInfo = async (videoUrl: string): Promise<Video> => {
   try {
@@ -54,7 +54,7 @@ const promptUserToChooseFormat = async (formats: {
   const videoFormats = formats.Video;
   const audioFormats = formats["Audio Only"];
 
-  const { format: formatChoice } = await prompts({
+  const {format: formatChoice} = await prompts({
     type: "select",
     name: "format",
     message: "🎞️ Choisissez le format vidéo :",
@@ -67,64 +67,66 @@ const promptUserToChooseFormat = async (formats: {
   return formatChoice;
 };
 
-/**
- * Télécharge une vidéo avec yt-dlp.
- */
-export async function downloadVideoFromPlaylist(
-  videoUrl: string,
-  resolution: number,
-  format: string,
-  filePath: string
-) {
-  const ytDlpFormat = getYtDlpFormatString(resolution, format);
-  console.log(`🚀 Téléchargement de la vidéo : ${videoUrl}`);
-  try {
-    await execa(
-      "yt-dlp",
-      [
-        "--ignore-errors", // Ignore download errors
-        "--quiet", // Silent mode (fixed typo)
-        "-f",
-        ytDlpFormat,
-        "-o",
-        `${filePath}/%(title)s.%(ext)s`,
-        videoUrl,
-        "--progress",
-      ],
-      { stdio: "inherit" }
-    );
-
-    console.log(`\n✅ Vidéo téléchargée : ${videoUrl}`);
-  } catch (error) {
-    console.error(`❌ Erreur lors du téléchargement de ${videoUrl}:`, error);
-  }
-}
-
-export async function downloadVideo(
-  videoUrl: string,
-  filePath: string,
-  format: string
-) {
+export const downloadVideo = async ({
+  videoUrl,
+  filePath,
+  format,
+  resolution,
+}: {
+  videoUrl: string;
+  filePath: string;
+  format: string;
+  resolution?: number;
+}) => {
   const [downloadFormat, recodeFormat] = format.includes("#")
     ? format.split("#")
     : [format, null];
 
-  const options = [
-    "-P",
-    filePath,
-    "-f",
-    downloadFormat,
+  const options = ["-P", filePath];
+
+  const formatWithResolution = getYtDlpFormatString({
+    resolution,
+    format: downloadFormat,
+  });
+
+  options.push("-f", resolution ? formatWithResolution : downloadFormat);
+  options.push(
     "--print",
     "after_move:filepath",
-  ];
-  options.push("--ignore-errors", "--progress");
+    "--ignore-errors",
+    "--progress",
+    "--verbose"
+  );
 
+  // Qu'est ce que c'est ?
   if (recodeFormat) {
     options.push("--recode-video", recodeFormat);
   }
 
-  await execa("yt-dlp", [...options, videoUrl], { stdio: "inherit" });
-}
+  console.log(`🚀 Téléchargement de la vidéo : ${videoUrl}`);
+
+  try {
+    const result = await execa("yt-dlp", [...options, videoUrl], {
+      stdio: "pipe", // Capture stdout et stderr au lieu de "inherit"
+      reject: false, // Ne pas rejeter la promesse en cas d'erreur
+    });
+
+    if (result.failed) {
+      console.error(`❌ Erreur lors du téléchargement de ${videoUrl}`);
+      console.error(`Stdout : ${result.stdout}`);
+      console.error(`Stderr : ${result.stderr}`);
+      throw new Error(
+        `Échec du téléchargement avec le code ${result.exitCode}`
+      );
+    }
+
+    console.log(`\n✅ Vidéo téléchargée : ${videoUrl}`);
+    return result.stdout.trim(); // Retourne le chemin du fichier téléchargé
+  } catch (error) {
+    console.error(`❌ Exception lors du téléchargement de ${videoUrl}:`, error);
+    throw error;
+  }
+};
 
 export const downloadVideoProcess = async (videoUrl: string) => {
   const filePath = await promptUserForFilePath();
@@ -133,5 +135,5 @@ export const downloadVideoProcess = async (videoUrl: string) => {
   const formats = getFormats(videoInfos);
   const formatValue = await promptUserToChooseFormat(formats);
 
-  await downloadVideo(videoUrl, filePath, formatValue);
+  await downloadVideo({videoUrl, filePath, format: formatValue});
 };

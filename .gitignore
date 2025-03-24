@@ -29,3 +29,20 @@ yarn-error.log*
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Media files
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+*.m4a
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.wmv
+*.webm
+*.flv
+*.3gp
+*.m4v

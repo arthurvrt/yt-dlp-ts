@@ -1,11 +1,11 @@
-import { execa } from "execa";
+import {execa} from "execa";
 
 /**
  * Exécute yt-dlp et retourne le JSON parsé.
  */
-export async function runYtDlp(args: string[]) {
+export const runYtDlp = async (args: string[]) => {
   try {
-    const { stdout } = await execa("yt-dlp", [...args, "--dump-single-json"]);
+    const {stdout} = await execa("yt-dlp", [...args, "--dump-single-json"]);
     return JSON.parse(stdout);
   } catch (error: any) {
     console.error(
@@ -14,15 +14,15 @@ export async function runYtDlp(args: string[]) {
     );
     return null;
   }
-}
+};
 
 /**
  * Vérifie si le lien est une playlist YouTube ou une vidéo YouTube.
  */
-export function isYoutubePlaylist(link: string): boolean {
+export const isYoutubePlaylist = (link: string): boolean => {
   const playlistRegex = /[?&]list=([^#&?]+)/;
   return playlistRegex.test(link);
-}
+};
 
 export function isYoutubeVideo(link: string): boolean {
   const videoRegex =

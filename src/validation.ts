@@ -1,4 +1,4 @@
-export function parseHHMM(input: string) {
+export const parseHHMM = (input: string) => {
   const parts = input.split(":");
   if (parts.length === 2) {
     const [minutes, seconds] = parts;
@@ -10,9 +10,9 @@ export function parseHHMM(input: string) {
     );
   }
   throw new Error("Invalid input");
-}
+};
 
-export function isValidHHMM(input: string) {
+export const isValidHHMM = (input: string) => {
   try {
     if (input) {
       parseHHMM(input);
@@ -21,9 +21,9 @@ export function isValidHHMM(input: string) {
   } catch {
     return false;
   }
-}
+};
 
-export function isValidUrl(url) {
+export const isValidUrl = (url: string) => {
   if (typeof url !== "string") {
     throw new TypeError("Expected a string");
   }
@@ -42,7 +42,7 @@ export function isValidUrl(url) {
   } catch {
     return false;
   }
-}
+};
 
 export const validateUrl = (url: string) => {
   if (!isValidUrl(url)) {
