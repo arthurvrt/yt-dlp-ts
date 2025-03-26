@@ -1,6 +1,6 @@
 import {formatDuration, intervalToDuration} from "date-fns";
-import {runYtDlp} from "./basic";
-import {Format, FormatInfo, Video} from "./types";
+import {getVideoInfo} from "./downloadVideo";
+import {audioOnlyKey, Format, MediaType, Video, videoKey} from "./types";
 
 export function formatHHMM(seconds: number) {
   const duration = intervalToDuration({start: 0, end: seconds * 1000});
@@ -46,9 +46,6 @@ const hasCodec = ({vcodec, acodec}: Format) => {
   };
 };
 
-export const videoKey = "Video";
-export const audioOnlyKey = "Audio Only";
-
 export const getFormats = (video?: Video) => {
   const videoWithAudio: Format[] = [];
   const audioOnly: Format[] = [];
@@ -84,9 +81,26 @@ export const getFormatTitle = (format: Format) =>
     .join(" | ");
 
 /**
+ * Generates a yt-dlp format string for audio with logical fallbacks.
+ */
+export const getYtDlpAudioFormatString = ({
+  bitrate,
+  preferredFormats,
+}: {
+  bitrate: number;
+  preferredFormats?: string[];
+}): string => {
+  const formatFallbacks = preferredFormats
+    .map((fmt) => `ba[abr<=${bitrate}][ext=${fmt}]`)
+    .join(" / ");
+
+  return `(${formatFallbacks} / ba[abr<=${bitrate}] / ba / a)`;
+};
+
+/**
  * Génère la commande yt-dlp avec fallback logique.
  */
-export const getYtDlpFormatString = ({
+export const getYtDlpVideoFormatString = ({
   resolution,
   format,
 }: {
@@ -102,39 +116,40 @@ export const getYtDlpFormatString = ({
   );
 };
 
-/**
- * Récupère les formats disponibles pour une vidéo.
- */
-export const getVideoFormats = async (
-  videoUrl: string
-): Promise<FormatInfo[]> => {
-  try {
-    const videoInfo = await runYtDlp([videoUrl]);
-    if (!videoInfo || !videoInfo.formats) return null;
-
-    return videoInfo.formats
-      .filter((f: any) => f.vcodec !== "none")
-      .map((f: any) => ({
-        format_id: f.format_id,
-        ext: f.ext,
-        height: f.height || null,
-        vcodec: f.vcodec,
-        acodec: f.acodec,
-      }));
-  } catch (error) {
-    return null;
+export const getYtDlpFormatString = ({
+  mediaType,
+  resolutionOrBitrate,
+  format,
+}: {
+  mediaType: MediaType;
+  resolutionOrBitrate: number;
+  format: string;
+}): string => {
+  if (mediaType === "Video") {
+    return getYtDlpVideoFormatString({resolution: resolutionOrBitrate, format});
+  } else if (mediaType === "Audio Only") {
+    return getYtDlpAudioFormatString({
+      bitrate: resolutionOrBitrate,
+      preferredFormats: [format],
+    });
   }
+  throw new Error("Invalid type. Must be 'audio' or 'video'.");
 };
 
 /**
  * Trouve les formats communs à toutes les vidéos d'une playlist.
  */
-type Resolution = number;
+type ResolutionOrBitrate = number;
 type Extension = string;
-export type AvailableFormats = Record<Resolution, Set<Extension>>;
+export type AvailableFormats = Record<ResolutionOrBitrate, Set<Extension>>;
 
-export const getCommonFormats = async (videoUrls: string[]) => {
-  console.log("📂 Analyse des formats disponibles...");
+type CommonFormats = {
+  [videoKey]: AvailableFormats;
+  [audioOnlyKey]: AvailableFormats;
+};
+export const getCommonFormats = async (
+  videoUrls: string[]
+): Promise<CommonFormats> => {
   console.log(`🔍 Analyse de ${videoUrls.length} vidéos...`);
 
   let videoCount = 0; // Compteur pour les vidéos
@@ -142,9 +157,9 @@ export const getCommonFormats = async (videoUrls: string[]) => {
   const allFormats = await Promise.all(
     videoUrls.map(async (url) => {
       try {
-        const formats = await getVideoFormats(url);
+        const videoInfos = await getVideoInfo(url);
+        const formats = getFormats(videoInfos);
         videoCount++;
-        console.log(`🔍 Analyse de la vidéo ${videoCount}...`);
         if (!formats) {
           errorCount++;
         }
@@ -156,26 +171,55 @@ export const getCommonFormats = async (videoUrls: string[]) => {
     })
   );
 
-  // Afficher le nombre d'erreurs
-  console.log(
-    `\n❌ ${errorCount} non trouvé(s) ou erreur(s) lors de l'analyse.`
-  );
+  if (errorCount === 0) {
+    console.log(`\n✅ Toutes les vidéos ont été analysées avec succès.`);
+  } else {
+    console.log(
+      `\n❌ ${errorCount} non trouvé(s) ou erreur(s) lors de l'analyse.`
+    );
+  }
 
-  // Filtrer les résultats nuls (erreurs)
-  const validFormats = allFormats.filter((format) => format !== null);
-  console.log(`🔍 Analyse de ${validFormats.length} vidéos réussie.`);
+  // Filtrer les résultats nuls (erreurs)b
+
+  const validVideoFormats = allFormats
+    .filter((formats) => formats !== null)
+    .map((formats) => formats![videoKey]);
 
   // Récupérer les résolutions et formats communs
   const resolutionOptions = [1080, 720, 480, 360];
-  const availableFormats: AvailableFormats = {};
+  const availableVideoFormats: AvailableFormats = {};
 
-  resolutionOptions.forEach((res) => (availableFormats[res] = new Set()));
+  resolutionOptions.forEach((res) => (availableVideoFormats[res] = new Set()));
 
-  validFormats.flat().forEach((format) => {
+  validVideoFormats.flat().forEach((format) => {
     if (format.height && resolutionOptions.includes(format.height)) {
-      availableFormats[format.height].add(format.ext);
+      availableVideoFormats[format.height].add(format.ext);
     }
   });
 
-  return availableFormats;
+  const bitrateRange = [64, 128, 192, 256, 320, 512];
+  const availableAudioFormats: AvailableFormats = {};
+
+  bitrateRange.forEach(
+    (bitrate) => (availableAudioFormats[bitrate] = new Set())
+  );
+
+  const validAudioFormats = allFormats
+    .filter((formats) => formats !== null)
+    .map((formats) => formats![audioOnlyKey]);
+
+  validAudioFormats.flat().forEach((format) => {
+    const closestBitrate = bitrateRange.reduce((prev, curr) =>
+      Math.abs(curr - format.abr) < Math.abs(prev - format.abr) ? curr : prev
+    );
+
+    // console.log("closestBitrate", closestBitrate);
+
+    availableAudioFormats[closestBitrate].add(format.ext);
+  });
+
+  return {
+    [videoKey]: availableVideoFormats,
+    [audioOnlyKey]: availableAudioFormats,
+  };
 };

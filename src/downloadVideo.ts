@@ -7,7 +7,7 @@ import {
   getFormatValue,
   getYtDlpFormatString,
 } from "./format";
-import {Format, Video} from "./types";
+import {Format, MediaType, Video} from "./types";
 
 export const getVideoInfo = async (videoUrl: string): Promise<Video> => {
   try {
@@ -66,12 +66,15 @@ export const downloadVideo = async ({
   videoUrl,
   filePath,
   format,
-  resolution,
+  playlistProps,
 }: {
   videoUrl: string;
   filePath: string;
   format: string;
-  resolution?: number;
+  playlistProps?: {
+    resolution: number;
+    type: MediaType;
+  };
 }) => {
   const [downloadFormat, recodeFormat] = format.includes("#")
     ? format.split("#")
@@ -79,9 +82,12 @@ export const downloadVideo = async ({
 
   const options = ["-P", filePath];
 
+  const {resolution, type} = playlistProps;
+
   const formatWithResolution = getYtDlpFormatString({
-    resolution,
+    resolutionOrBitrate: resolution,
     format: downloadFormat,
+    mediaType: type,
   });
 
   options.push("-f", resolution ? formatWithResolution : downloadFormat);
@@ -123,12 +129,18 @@ export const downloadVideo = async ({
   }
 };
 
-export const downloadVideoProcess = async (videoUrl: string) => {
-  const filePath = await promptUserForFilePath();
+export const downloadYtVideo = async (videoUrl: string) => {
+  console.log(`📹 Le lien passé est une vidéo youtube : ${videoUrl}`);
 
-  const videoInfos = await getVideoInfo(videoUrl);
-  const allFormats = getFormats(videoInfos);
-  const mediaType = await promptUserForMediaType();
+  const [filePath, videoInfos] = await Promise.all([
+    promptUserForFilePath(), // User selects a file path
+    getVideoInfo(videoUrl), // Fetch video URLs in parallel
+  ]);
+
+  const [mediaType, allFormats] = await Promise.all([
+    promptUserForMediaType(), // User selects a file path
+    getFormats(videoInfos), // Fetch video URLs in parallel
+  ]);
 
   const formats = allFormats[mediaType];
   if (!formats || formats.length === 0) {

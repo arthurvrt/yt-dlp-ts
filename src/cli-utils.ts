@@ -1,5 +1,5 @@
 import prompts from "prompts";
-import {audioOnlyKey, videoKey} from "./format";
+import {audioOnlyKey, MediaType, videoKey} from "./types";
 
 /**
  * Demander à l'utilisateur où il veut enregistrer la vidéo.
@@ -18,7 +18,7 @@ export const promptUserForFilePath = async (): Promise<string> => {
 /**
  * Demander à l'utilisateur s'il veut télécharger l'audio ou la vidéo.
  */
-export const promptUserForMediaType = async (): Promise<"audio" | "video"> => {
+export const promptUserForMediaType = async (): Promise<MediaType> => {
   const {mediaType} = await prompts({
     type: "select",
     name: "mediaType",

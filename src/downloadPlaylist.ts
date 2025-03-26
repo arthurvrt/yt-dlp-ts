@@ -1,8 +1,9 @@
-import {runYtDlp} from "./basic";
-import {promptUserForFilePath} from "./cli-utils";
 import prompts from "prompts";
+import {runYtDlp} from "./basic";
+import {promptUserForFilePath, promptUserForMediaType} from "./cli-utils";
 import {downloadVideo} from "./downloadVideo";
 import {AvailableFormats, getCommonFormats} from "./format";
+import {MediaType} from "./types";
 
 const playlistUrl = process.argv[2];
 
@@ -17,8 +18,6 @@ if (!playlistUrl) {
 const getPlaylistVideos = async (playlistUrl: string): Promise<string[]> => {
   const playlistInfo = await runYtDlp(["--flat-playlist", playlistUrl]);
   if (!playlistInfo || !playlistInfo.entries) return [];
-
-  console.log(`📂 ${playlistInfo.entries.length} vidéos trouvées.`);
 
   return playlistInfo.entries.map((entry: any) => entry.url);
 };
@@ -54,17 +53,29 @@ const promptUserForFormat = async (availableFormats: AvailableFormats) => {
 /**
  * Télécharge toutes les vidéos d'une playlist en parallèle.
  */
-const downloadPlaylist = async (
-  videoUrls: string[],
-  resolution: number,
-  format: string,
-  filePath: string
-) => {
+const downloadPlaylist = async ({
+  videoUrls,
+  resolution,
+  format,
+  filePath,
+  mediaType,
+}: {
+  videoUrls: string[];
+  resolution: number;
+  format: string;
+  filePath: string;
+  mediaType: MediaType;
+}) => {
   console.log(`\n🚀 Téléchargement des ${videoUrls.length} vidéos en cours...`);
 
   // Lancer les téléchargements en parallèle
   const downloadPromises = videoUrls.map((videoUrl) =>
-    downloadVideo({videoUrl, format, filePath, resolution})
+    downloadVideo({
+      videoUrl,
+      format,
+      filePath,
+      playlistProps: {resolution, type: mediaType},
+    })
   );
 
   // Attendre que tous les téléchargements soient terminés
@@ -75,12 +86,15 @@ const downloadPlaylist = async (
 /**
  * Exécute le processus de téléchargement de playlist.
  */
-export const downloadYouTubePlaylistInParalelle = async (
-  playlistUrl: string
-) => {
-  const filePath = await promptUserForFilePath();
-  // Récupérer les URLs des vidéos de la playlist
-  const videoUrls = await getPlaylistVideos(playlistUrl);
+export const downloadYtPlaylist = async (playlistUrl: string) => {
+  console.log(`📋 Le lien passé est une playlist: ${playlistUrl}`);
+
+  // Start both operations simultaneously
+  const [filePath, videoUrls] = await Promise.all([
+    promptUserForFilePath(), // User selects a file path
+    getPlaylistVideos(playlistUrl), // Fetch video URLs in parallel
+  ]);
+
   if (videoUrls.length === 0) {
     console.log("❌ Aucune vidéo trouvée dans la playlist.");
     return;
@@ -88,6 +102,12 @@ export const downloadYouTubePlaylistInParalelle = async (
   const availableFormats = await getCommonFormats(videoUrls);
   if (!availableFormats) return;
 
-  const {resolution, format} = await promptUserForFormat(availableFormats);
-  await downloadPlaylist(videoUrls, resolution, format, filePath);
+  const mediaType = await promptUserForMediaType();
+
+  const availableFormatsChoosen = availableFormats[mediaType];
+
+  const {resolution, format} = await promptUserForFormat(
+    availableFormatsChoosen
+  );
+  await downloadPlaylist({videoUrls, resolution, format, filePath, mediaType});
 };
