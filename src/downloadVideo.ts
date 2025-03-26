@@ -130,11 +130,17 @@ export const downloadVideo = async ({
 };
 
 export const downloadYtVideo = async (videoUrl: string) => {
-  const filePath = await promptUserForFilePath();
+  console.log(`📹 Le lien passé est une vidéo youtube : ${videoUrl}`);
 
-  const videoInfos = await getVideoInfo(videoUrl);
-  const allFormats = getFormats(videoInfos);
-  const mediaType = await promptUserForMediaType();
+  const [filePath, videoInfos] = await Promise.all([
+    promptUserForFilePath(), // User selects a file path
+    getVideoInfo(videoUrl), // Fetch video URLs in parallel
+  ]);
+
+  const [mediaType, allFormats] = await Promise.all([
+    promptUserForMediaType(), // User selects a file path
+    getFormats(videoInfos), // Fetch video URLs in parallel
+  ]);
 
   const formats = allFormats[mediaType];
   if (!formats || formats.length === 0) {

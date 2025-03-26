@@ -87,9 +87,14 @@ const downloadPlaylist = async ({
  * Exécute le processus de téléchargement de playlist.
  */
 export const downloadYtPlaylist = async (playlistUrl: string) => {
-  const filePath = await promptUserForFilePath();
-  // Récupérer les URLs des vidéos de la playlist
-  const videoUrls = await getPlaylistVideos(playlistUrl);
+  console.log(`📋 Le lien passé est une playlist: ${playlistUrl}`);
+
+  // Start both operations simultaneously
+  const [filePath, videoUrls] = await Promise.all([
+    promptUserForFilePath(), // User selects a file path
+    getPlaylistVideos(playlistUrl), // Fetch video URLs in parallel
+  ]);
+
   if (videoUrls.length === 0) {
     console.log("❌ Aucune vidéo trouvée dans la playlist.");
     return;
