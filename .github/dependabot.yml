@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: "npm" # Utilisation de npm pour gérer les dépendances
+    directory: "/" # Répertoire racine du projet
+    schedule:
+      interval: "weekly" # Vérification des mises à jour chaque semaine
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    open-pull-requests-limit: 10 # Limite des PR ouvertes par Dependabot
+    labels:
+      - "dependencies"
+      - "automated"
+    ignore:
+      - dependency-name: "typescript" # Exemple : Ignorer les mises à jour de TypeScript
+        versions: ["<5.0.0"] # Ignorer les versions inférieures à 5.0.0
+
