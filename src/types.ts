@@ -20,10 +20,7 @@ export type Video = {
   formats: Format[];
 };
 
-// export interface FormatInfo {
-//   format_id: string;
-//   ext: string;
-//   height: number | null;
-//   vcodec: string;
-//   acodec: string;
-// }
+export const videoKey = "Video";
+export const audioOnlyKey = "Audio Only";
+
+export type MediaType = typeof videoKey | typeof audioOnlyKey;

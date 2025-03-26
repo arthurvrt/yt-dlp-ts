@@ -1,9 +1,9 @@
-import { formatDuration, intervalToDuration } from "date-fns";
-import { getVideoInfo } from "./downloadVideo";
-import { Format, Video } from "./types";
+import {formatDuration, intervalToDuration} from "date-fns";
+import {getVideoInfo} from "./downloadVideo";
+import {audioOnlyKey, Format, MediaType, Video, videoKey} from "./types";
 
 export function formatHHMM(seconds: number) {
-  const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
+  const duration = intervalToDuration({start: 0, end: seconds * 1000});
 
   return formatDuration(duration, {
     format:
@@ -39,35 +39,32 @@ export function formatFilesize(filesize?: number, filesizeApprox?: number) {
   return `${(size / 1024 ** 3).toFixed(2)} GiB`;
 }
 
-const hasCodec = ({ vcodec, acodec }: Format) => {
+const hasCodec = ({vcodec, acodec}: Format) => {
   return {
     hasVcodec: Boolean(vcodec) && vcodec !== "none",
     hasAcodec: Boolean(acodec) && acodec !== "none",
   };
 };
 
-export const videoKey = "Video";
-export const audioOnlyKey = "Audio Only";
-
 export const getFormats = (video?: Video) => {
   const videoWithAudio: Format[] = [];
   const audioOnly: Format[] = [];
 
-  if (!video) return { [videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly };
+  if (!video) return {[videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly};
 
   for (const format of video.formats.slice().reverse()) {
-    const { hasAcodec, hasVcodec } = hasCodec(format);
+    const {hasAcodec, hasVcodec} = hasCodec(format);
     if (hasVcodec) videoWithAudio.push(format);
     else if (hasAcodec || format.resolution === "audio only")
       audioOnly.push(format);
     else continue;
   }
 
-  return { [videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly };
+  return {[videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly};
 };
 
 export const getFormatValue = (format: Format) => {
-  const { hasAcodec } = hasCodec(format);
+  const {hasAcodec} = hasCodec(format);
   const audio = hasAcodec ? "" : "+bestaudio";
   const targetExt = `#${format.ext}`;
   return format.format_id + audio + targetExt;
@@ -103,7 +100,7 @@ export const getYtDlpAudioFormatString = ({
 /**
  * Génère la commande yt-dlp avec fallback logique.
  */
-export const getYtDlpFormatString = ({
+export const getYtDlpVideoFormatString = ({
   resolution,
   format,
 }: {
@@ -119,29 +116,25 @@ export const getYtDlpFormatString = ({
   );
 };
 
-// /**
-//  * Récupère les formats disponibles pour une vidéo.
-//  */
-// export const getVideoFormats = async (
-//   videoUrl: string
-// ): Promise<FormatInfo[]> => {
-//   try {
-//     const videoInfo = await runYtDlp([videoUrl]);
-//     if (!videoInfo || !videoInfo.formats) return null;
-
-//     return videoInfo.formats
-//       .filter((f: any) => f.vcodec !== "none")
-//       .map((f: any) => ({
-//         format_id: f.format_id,
-//         ext: f.ext,
-//         height: f.height || null,
-//         vcodec: f.vcodec,
-//         acodec: f.acodec,
-//       }));
-//   } catch (error) {
-//     return null;
-//   }
-// };
+export const getYtDlpFormatString = ({
+  mediaType,
+  resolutionOrBitrate,
+  format,
+}: {
+  mediaType: MediaType;
+  resolutionOrBitrate: number;
+  format: string;
+}): string => {
+  if (mediaType === "Video") {
+    return getYtDlpVideoFormatString({resolution: resolutionOrBitrate, format});
+  } else if (mediaType === "Audio Only") {
+    return getYtDlpAudioFormatString({
+      bitrate: resolutionOrBitrate,
+      preferredFormats: [format],
+    });
+  }
+  throw new Error("Invalid type. Must be 'audio' or 'video'.");
+};
 
 /**
  * Trouve les formats communs à toutes les vidéos d'une playlist.
@@ -151,11 +144,12 @@ type Extension = string;
 export type AvailableFormats = Record<ResolutionOrBitrate, Set<Extension>>;
 
 type CommonFormats = {
-  [videoKey]: AvailableFormats[];
-  [audioOnlyKey]: AvailableFormats[];
+  [videoKey]: AvailableFormats;
+  [audioOnlyKey]: AvailableFormats;
 };
-
-export const getCommonFormats = async (videoUrls: string[]) => {
+export const getCommonFormats = async (
+  videoUrls: string[]
+): Promise<CommonFormats> => {
   console.log(`🔍 Analyse de ${videoUrls.length} vidéos...`);
 
   let videoCount = 0; // Compteur pour les vidéos
@@ -213,9 +207,6 @@ export const getCommonFormats = async (videoUrls: string[]) => {
   const validAudioFormats = allFormats
     .filter((formats) => formats !== null)
     .map((formats) => formats![audioOnlyKey]);
-
-  console.log("validAudioFormats", validAudioFormats.length);
-  console.log("validAudioFormats", validAudioFormats);
 
   validAudioFormats.flat().forEach((format) => {
     const closestBitrate = bitrateRange.reduce((prev, curr) =>
