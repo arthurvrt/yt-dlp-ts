@@ -30,8 +30,7 @@ export const isValidUrl = (url: string) => {
 
   url = url.trim();
   if (url.includes(" ")) {
-    console.log("URLs cannot contain spaces");
-    console.log("url: ", url);
+    console.log("URLs cannot contain spaces", url);
 
     return false;
   }

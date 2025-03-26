@@ -1,6 +1,6 @@
-import {isYoutubePlaylist, processUrl} from "./basic";
-import {downloadYouTubePlaylistInParalelle} from "./downloadPlaylist";
-import {downloadVideoProcess} from "./downloadVideo";
+import { isYoutubePlaylist, processVideoUrl } from "./basic";
+import { downloadYtPlaylist } from "./downloadPlaylist";
+import { downloadYtVideo } from "./downloadVideo";
 
 const [, , url] = process.argv; // Get the third CLI argument
 
@@ -18,16 +18,15 @@ const logDuration = (startTime) => {
   console.log(`Time taken: ${duration.toFixed(2)} seconds`);
 };
 
-const processedUrl = processUrl(url);
-
-const isPlaylist = isYoutubePlaylist(processedUrl);
+const isPlaylist = isYoutubePlaylist(url);
 
 async function downloadContent() {
   try {
     if (isPlaylist) {
-      await downloadYouTubePlaylistInParalelle(processedUrl);
+      await downloadYtPlaylist(url);
     } else {
-      await downloadVideoProcess(processedUrl);
+      const processedUrl = processVideoUrl(url);
+      await downloadYtVideo(processedUrl);
     }
 
     logDuration(startTime);

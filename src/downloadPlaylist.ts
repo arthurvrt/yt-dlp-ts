@@ -1,8 +1,8 @@
-import {runYtDlp} from "./basic";
-import {promptUserForFilePath} from "./cli-utils";
 import prompts from "prompts";
-import {downloadVideo} from "./downloadVideo";
-import {AvailableFormats, getCommonFormats} from "./format";
+import { runYtDlp } from "./basic";
+import { promptUserForFilePath, promptUserForMediaType } from "./cli-utils";
+import { downloadVideo } from "./downloadVideo";
+import { AvailableFormats, getCommonFormats } from "./format";
 
 const playlistUrl = process.argv[2];
 
@@ -18,8 +18,6 @@ const getPlaylistVideos = async (playlistUrl: string): Promise<string[]> => {
   const playlistInfo = await runYtDlp(["--flat-playlist", playlistUrl]);
   if (!playlistInfo || !playlistInfo.entries) return [];
 
-  console.log(`📂 ${playlistInfo.entries.length} vidéos trouvées.`);
-
   return playlistInfo.entries.map((entry: any) => entry.url);
 };
 
@@ -27,7 +25,7 @@ const getPlaylistVideos = async (playlistUrl: string): Promise<string[]> => {
  * Permet à l'utilisateur de choisir la résolution et le format.
  */
 const promptUserForFormat = async (availableFormats: AvailableFormats) => {
-  const {resolution} = await prompts({
+  const { resolution } = await prompts({
     type: "select",
     name: "resolution",
     message: "\n📺 Choisissez la résolution souhaitée :",
@@ -35,10 +33,10 @@ const promptUserForFormat = async (availableFormats: AvailableFormats) => {
       .map(Number)
       .filter((res) => availableFormats[res].size > 0)
       .sort((a, b) => b - a)
-      .map((res) => ({title: `${res}p`, value: res})),
+      .map((res) => ({ title: `${res}p`, value: res })),
   });
 
-  const {format} = await prompts({
+  const { format } = await prompts({
     type: "select",
     name: "format",
     message: "🎞️ Choisissez le format vidéo :",
@@ -48,7 +46,7 @@ const promptUserForFormat = async (availableFormats: AvailableFormats) => {
     })),
   });
 
-  return {resolution, format};
+  return { resolution, format };
 };
 
 /**
@@ -64,7 +62,7 @@ const downloadPlaylist = async (
 
   // Lancer les téléchargements en parallèle
   const downloadPromises = videoUrls.map((videoUrl) =>
-    downloadVideo({videoUrl, format, filePath, resolution})
+    downloadVideo({ videoUrl, format, filePath, resolution })
   );
 
   // Attendre que tous les téléchargements soient terminés
@@ -75,9 +73,7 @@ const downloadPlaylist = async (
 /**
  * Exécute le processus de téléchargement de playlist.
  */
-export const downloadYouTubePlaylistInParalelle = async (
-  playlistUrl: string
-) => {
+export const downloadYtPlaylist = async (playlistUrl: string) => {
   const filePath = await promptUserForFilePath();
   // Récupérer les URLs des vidéos de la playlist
   const videoUrls = await getPlaylistVideos(playlistUrl);
@@ -88,6 +84,14 @@ export const downloadYouTubePlaylistInParalelle = async (
   const availableFormats = await getCommonFormats(videoUrls);
   if (!availableFormats) return;
 
-  const {resolution, format} = await promptUserForFormat(availableFormats);
+  console.log("\n📹 Formats disponibles pour la playlist :", availableFormats);
+
+  const mediaType = await promptUserForMediaType();
+
+  const availableFormatsChoosen = availableFormats[mediaType];
+
+  const { resolution, format } = await promptUserForFormat(
+    availableFormatsChoosen
+  );
   await downloadPlaylist(videoUrls, resolution, format, filePath);
 };

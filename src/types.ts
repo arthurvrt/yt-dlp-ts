@@ -9,6 +9,8 @@ export type Format = {
   filesize_approx?: number;
   resolution: string;
   tbr: number | null;
+  height: number | null;
+  abr: number | null;
 };
 
 export type Video = {
@@ -18,10 +20,10 @@ export type Video = {
   formats: Format[];
 };
 
-export interface FormatInfo {
-  format_id: string;
-  ext: string;
-  height: number | null;
-  vcodec: string;
-  acodec: string;
-}
+// export interface FormatInfo {
+//   format_id: string;
+//   ext: string;
+//   height: number | null;
+//   vcodec: string;
+//   acodec: string;
+// }
