@@ -29,5 +29,6 @@
     "editor.formatOnSave": true,
     "editor.renderWhitespace": "all",
     "editor.acceptSuggestionOnEnter": "off"
-  }
+  },
+  "chat.promptFiles": true
 }

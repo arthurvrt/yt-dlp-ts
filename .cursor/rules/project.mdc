@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+- Always use **const** for variable declarations.
+- Prefer **arrow functions** for defining functions.
+- The project follows **TypeScript strict mode** for type safety, so adhere to strict typing guidelines.
+- Use **PNPM** for package management.
+- Utilize **DATEFNS** for date manipulation and **EXECA** for executing commands.
+- Leverage **PROMPTS** for user interactions.
+
+For **linting**, make sure the code complies with **ESLint** rules.
+
+In JavaScript code, always use **double quotes** and **tabs** for indentation.
