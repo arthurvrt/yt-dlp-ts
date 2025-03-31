@@ -7,7 +7,7 @@
     "prompts": "^2.4.2"
   },
   "devDependencies": {
-    "@types/node": "22.13.13",
+    "@types/node": "22.13.14",
     "@types/prompts": "^2.4.9",
     "eslint": "^9.23.0",
     "globals": "^16.0.0",
