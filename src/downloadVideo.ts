@@ -1,13 +1,13 @@
-import {execa} from "execa";
+import { execa } from "execa";
 import prompts from "prompts";
-import {promptUserForFilePath, promptUserForMediaType} from "./cli-utils";
+import { promptUserForFilePath, promptUserForMediaType } from "./cli-utils";
 import {
   getFormats,
   getFormatTitle,
   getFormatValue,
   getYtDlpFormatString,
 } from "./format";
-import {Format, MediaType, Video} from "./types";
+import { Format, MediaType, Video } from "./types";
 
 export const getVideoInfo = async (videoUrl: string): Promise<Video> => {
   try {
@@ -49,7 +49,7 @@ export const getVideosFromIds = async (
 };
 
 const promptUserToChooseFormat = async (formats: Format[]): Promise<string> => {
-  const {format: formatChoice} = await prompts({
+  const { format: formatChoice } = await prompts({
     type: "select",
     name: "format",
     message: "🎞️ Choisissez le format vidéo :",
@@ -82,19 +82,19 @@ export const downloadVideo = async ({
 
   const options = ["-P", filePath];
 
-  const {resolution, type} = playlistProps;
+  const chosenFormat = playlistProps
+    ? getYtDlpFormatString({
+        resolutionOrBitrate: playlistProps.resolution,
+        format: downloadFormat,
+        mediaType: playlistProps.type,
+      })
+    : downloadFormat;
 
-  const formatWithResolution = getYtDlpFormatString({
-    resolutionOrBitrate: resolution,
-    format: downloadFormat,
-    mediaType: type,
-  });
-
-  options.push("-f", resolution ? formatWithResolution : downloadFormat);
+  options.push("-f", chosenFormat);
   options.push(
     "--print",
     "after_move:filepath",
-    "--ignore-errors",
+    // "--ignore-errors",
     "--progress",
     "--verbose"
   );
@@ -150,5 +150,5 @@ export const downloadYtVideo = async (videoUrl: string) => {
 
   const formatValue = await promptUserToChooseFormat(formats);
 
-  await downloadVideo({videoUrl, filePath, format: formatValue});
+  await downloadVideo({ videoUrl, filePath, format: formatValue });
 };

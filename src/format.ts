@@ -1,9 +1,9 @@
-import {formatDuration, intervalToDuration} from "date-fns";
-import {getVideoInfo} from "./downloadVideo";
-import {audioOnlyKey, Format, MediaType, Video, videoKey} from "./types";
+import { formatDuration, intervalToDuration } from "date-fns";
+import { getVideoInfo } from "./downloadVideo";
+import { audioOnlyKey, Format, MediaType, Video, videoKey } from "./types";
 
 export function formatHHMM(seconds: number) {
-  const duration = intervalToDuration({start: 0, end: seconds * 1000});
+  const duration = intervalToDuration({ start: 0, end: seconds * 1000 });
 
   return formatDuration(duration, {
     format:
@@ -39,7 +39,7 @@ export function formatFilesize(filesize?: number, filesizeApprox?: number) {
   return `${(size / 1024 ** 3).toFixed(2)} GiB`;
 }
 
-const hasCodec = ({vcodec, acodec}: Format) => {
+const hasCodec = ({ vcodec, acodec }: Format) => {
   return {
     hasVcodec: Boolean(vcodec) && vcodec !== "none",
     hasAcodec: Boolean(acodec) && acodec !== "none",
@@ -50,21 +50,21 @@ export const getFormats = (video?: Video) => {
   const videoWithAudio: Format[] = [];
   const audioOnly: Format[] = [];
 
-  if (!video) return {[videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly};
+  if (!video) return { [videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly };
 
   for (const format of video.formats.slice().reverse()) {
-    const {hasAcodec, hasVcodec} = hasCodec(format);
+    const { hasAcodec, hasVcodec } = hasCodec(format);
     if (hasVcodec) videoWithAudio.push(format);
     else if (hasAcodec || format.resolution === "audio only")
       audioOnly.push(format);
     else continue;
   }
 
-  return {[videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly};
+  return { [videoKey]: videoWithAudio, [audioOnlyKey]: audioOnly };
 };
 
 export const getFormatValue = (format: Format) => {
-  const {hasAcodec} = hasCodec(format);
+  const { hasAcodec } = hasCodec(format);
   const audio = hasAcodec ? "" : "+bestaudio";
   const targetExt = `#${format.ext}`;
   return format.format_id + audio + targetExt;
@@ -126,14 +126,17 @@ export const getYtDlpFormatString = ({
   format: string;
 }): string => {
   if (mediaType === "Video") {
-    return getYtDlpVideoFormatString({resolution: resolutionOrBitrate, format});
+    return getYtDlpVideoFormatString({
+      resolution: resolutionOrBitrate,
+      format,
+    });
   } else if (mediaType === "Audio Only") {
     return getYtDlpAudioFormatString({
       bitrate: resolutionOrBitrate,
       preferredFormats: [format],
     });
   }
-  throw new Error("Invalid type. Must be 'audio' or 'video'.");
+  throw new Error("Invalid mediaType. Must be 'Audio Only' or 'Video'.");
 };
 
 /**
